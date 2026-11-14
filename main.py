@@ -1,0 +1,68 @@
+import json
+from pathlib import Path
+from solver import solve
+from display import display_solution
+
+path = Path(__file__).parent / "puzzle.json"
+
+with path.open("r", encoding="utf-8") as file:
+    data = json.load(file)
+
+def choose_puzzle():
+    puzzles = data["puzzles"]
+
+    while True:
+        try:
+            choice = int(input(
+                f"Choisis un puzzle entre 1 et {len(puzzles)} : "
+            ))
+
+            if not 1 <= choice <= len(puzzles):
+                print(f"Erreur : choisis un nombre entre 1 et {len(puzzles)}.")
+                continue
+
+            return puzzles[choice - 1]
+
+        except ValueError:
+            print("Erreur : saisis un nombre entier.")
+
+def validate_grid(grid):
+    if not grid:
+        raise ValueError("La grille est vide.")
+
+    if not all(isinstance(row, str) for row in grid):
+        raise ValueError("Chaque ligne doit être une chaîne de caractères.")
+
+    if len(grid[0]) == 0:
+        raise ValueError("Les lignes de la grille ne peuvent pas être vides.")
+
+    if any(len(row) != len(grid[0]) for row in grid):
+        raise ValueError("Les lignes ont des longueurs différentes.")
+
+    for row_index, row in enumerate(grid):
+        for col_index, char in enumerate(row):
+            if char not in {".", "#"}:
+                raise ValueError(f"Caractère invalide '{char}' ")
+
+puzzle = choose_puzzle()
+
+validate_grid(puzzle["grid"])
+
+supported_rules = ["symbols", "gemini", "delta", "shape_bank", "precision", "polyomino"]
+
+unsupported = [
+    rule["type"]
+    for rule in puzzle["rules"]
+    if rule["type"] not in supported_rules
+]
+
+if unsupported:
+    raise ValueError(f"Règles non encore implémentées : {unsupported}")
+
+solutions = solve(puzzle, max_solutions=2)
+
+if solutions:
+    print("Solution trouvée !")
+    display_solution(puzzle, solutions[0])
+else:
+    print("Pas de solution trouvée.")
