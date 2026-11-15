@@ -48,7 +48,7 @@ puzzle = choose_puzzle()
 
 validate_grid(puzzle["grid"])
 
-supported_rules = ["symbols", "gemini", "delta", "shape_bank", "precision", "polyomino"]
+supported_rules = ["symbols", "gemini", "delta", "shape_bank", "precision", "polyomino", "mingle_shape"]
 
 unsupported = [
     rule["type"]

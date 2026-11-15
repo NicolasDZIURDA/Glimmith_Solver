@@ -1,7 +1,7 @@
 """Moteur commun : il ne connaît AUCUNE règle, il appelle leurs hooks."""
 from collections import defaultdict
 from types import SimpleNamespace
-from solver.rules import Rule, symbols, gemini, delta, shape_bank, precision, polyomino
+from solver.rules import Rule, symbols, gemini, delta, shape_bank, precision, polyomino, mingle_shape
 from puzzle_utils import prepare_puzzle
 
 REGISTRY = {
@@ -11,6 +11,7 @@ REGISTRY = {
     "shape_bank": shape_bank.build,
     "precision": precision.build,
     "polyomino": polyomino.build,
+    "mingle_shape": mingle_shape.build,
 }
 
 
@@ -28,10 +29,10 @@ def build_context(puzzle, valid, walls, neighbors):
     conflict = [0] * n
     for wall in walls:
         a, b = tuple(wall)
-        if a in idx and b in idx:
-            conflict[idx[a]] |= bit[idx[b]]
-            conflict[idx[b]] |= bit[idx[a]]
+        conflict[idx[a]] |= bit[idx[b]]
+        conflict[idx[b]] |= bit[idx[a]]
 
+    # Préparation des bitmasks pour identifier les cases compatibles à un déplacement dans chacune des quatre directions
     shifts = defaultdict(int)
     for i, nbrs in enumerate(adj):
         for j in nbrs:
