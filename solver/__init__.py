@@ -14,9 +14,7 @@ def _build_valid(puzzle):
     }
 
 
-def solve(puzzle, max_solutions=2):
-    """Point d'entrée unique : résout `puzzle`, renvoie une liste de solutions
-    (chacune est une liste de régions, une région étant un frozenset de cases)."""
+def solve(puzzle, max_solutions=2, **options):
     valid = _build_valid(puzzle)
     walls = validate_walls(puzzle.get("walls", []), valid)
-    return solve_puzzle(puzzle, valid, walls, neighbors, max_solutions)
+    return solve_puzzle(puzzle, valid, walls, neighbors, max_solutions, **options)

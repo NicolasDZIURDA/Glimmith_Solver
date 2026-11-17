@@ -59,10 +59,17 @@ unsupported = [
 if unsupported:
     raise ValueError(f"Règles non encore implémentées : {unsupported}")
 
-solutions = solve(puzzle, max_solutions=2)
+stats = {}
+solutions = solve(puzzle, max_solutions=1, time_limit=60, verbose=True, stats=stats)
+stopped = stats["timed_out"] or stats["interrupted"]
 
 if solutions:
     print("Solution trouvée !")
+    if stopped:
+        print("(recherche interrompue : il pourrait y avoir d'autres solutions)")
     display_solution(puzzle, solutions[0])
+elif stopped:
+    print(f"Recherche interrompue après {stats['seconds']:.0f} s : aucune solution trouvée, "
+          "mais le puzzle n'est pas forcément sans solution.")
 else:
     print("Pas de solution trouvée.")

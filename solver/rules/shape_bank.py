@@ -3,9 +3,12 @@ from solver.shapes import get_shape_variants
 
 
 class ShapeBankRule(Rule):
+    provides_candidates = True
+    
     def __init__(self, ctx):
         self.ctx = ctx
         self._by_cell = None
+        self.count = 0
 
     def _placements(self):
         ctx = self.ctx
@@ -31,6 +34,7 @@ class ShapeBankRule(Rule):
                             m ^= low
                         if not bad:
                             masks.add(mask)
+        self.count = len(masks)
         by_cell = {}
         for mask in masks:
             m = mask
@@ -46,6 +50,9 @@ class ShapeBankRule(Rule):
         for mask in self._by_cell.get(u, ()):
             if mask & ~comp == 0:
                 yield mask
+                
+    def info(self):
+        return {"placements de la banque": self.count} if self._by_cell is not None else {}
                 
 
 def build(ctx):

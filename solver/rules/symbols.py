@@ -1,157 +1,124 @@
 from . import Rule
-from puzzle_utils import prepare_puzzle
-from collections import defaultdict
+
+
+def _bits(mask):
+    out = []
+    while mask:
+        low = mask & -mask
+        out.append(low.bit_length() - 1)
+        mask ^= low
+    return out
+
+
+def _perfect_matching(options):
+    """options[a] = liste des partenaires possibles de a ; vrai si tous les a peuvent être appariés."""
+    owner = {}
+
+    def augment(a, seen):
+        for b in options[a]:
+            if b in seen:
+                continue
+            seen.add(b)
+            if b not in owner or augment(owner[b], seen):
+                owner[b] = a
+                return True
+        return False
+
+    return all(augment(a, set()) for a in range(len(options)))
 
 
 class SymbolsRule(Rule):
-    def __init__(self, ctx):
-        self.ctx = ctx
-        self._by_cell = None
-
-    def _placements(self):
-        ctx = self.ctx
-        height = ctx.height
-        width = ctx.width
-        bit = ctx.bit
-        valid_mask = ctx.valid_mask
-        conflict = ctx.conflict
-
-        _, _, _, symbol_positions = prepare_puzzle(ctx.puzzle)
-
-        colors = list(symbol_positions)
-        k = len(colors)
-
-        if k < 1:
-            self._by_cell = {}
-            return
-
-        n = height * width
-        color_mask = [0] * k
-        symbol_color = {}
+    def __init__(self, ctx, colors, positions):
+        self.k = len(colors)
+        self.ALL = (1 << self.k) - 1
+        self.color_of = {}
+        self.mask = [0] * self.k
+        self.flood = ctx.flood
+        self.nb = [sum(ctx.bit[j] for j in ctx.adj[i]) for i in range(ctx.n)]   # voisins d'une case
         for ci, color in enumerate(colors):
-            for r, c in symbol_positions[color]:
-                i = r * width + c
-                if not (valid_mask & bit[i]):
-                    raise ValueError(
-                        f"Le symbole {color} en {(r, c)} "
-                        "est placé sur une case invalide."
-                    )
-                if i in symbol_color:
-                    raise ValueError(
-                        "Une cellule appartient à plusieurs couleurs."
-                    )
-                symbol_color[i] = ci
-                color_mask[ci] |= bit[i]
-        ALL = (1 << k) - 1
-        shift_masks = defaultdict(int)
-        for r in range(height):
-            for c in range(width):
-                i = r * width + c
-                if not (valid_mask & bit[i]):
-                    continue
-                for nr, nc in (
-                    (r - 1, c),
-                    (r + 1, c),
-                    (r, c - 1),
-                    (r, c + 1),
-                ):
-                    if not (0 <= nr < height and 0 <= nc < width):
-                        continue
-                    j = nr * width + nc
-                    if not (valid_mask & bit[j]):
-                        continue
-                    if conflict[i] & bit[j]:
-                        continue
-                    shift_masks[j - i] |= bit[i]
-        shift_list = list(shift_masks.items())
+            for pos in positions[color]:
+                i = ctx.idx[pos]
+                if i in self.color_of:
+                    raise ValueError("Une cellule appartient à plusieurs couleurs.")
+                self.color_of[i] = ci
+                self.mask[ci] |= ctx.bit[i]
 
-        def expand(region):
-            out = 0
-            for d, mask in shift_list:
-                x = region & mask
-                out |= (x << d) if d > 0 else (x >> -d)
-            return out
+    def start(self, i):
+        return self.add(0, i)
 
-        def flood(start, allowed):
-            reached = frontier = start
-            while frontier:
-                frontier = expand(frontier) & allowed & ~reached
-                reached |= frontier
-            return reached
+    def add(self, present, i):
+        ci = self.color_of.get(i)
+        if ci is None:
+            return present, 0
+        return present | (1 << ci), self.mask[ci] & ~(1 << i)
 
-        all_regions = set()
+    def viable(self, present, count, reach):
+        if present == self.ALL:
+            return True
+        r = reach()
+        return all(present >> ci & 1 or r & self.mask[ci] for ci in range(self.k))
 
-        def rec(region, forbidden, present):
-            if present != ALL:
-                reachable = flood(region, ~forbidden | region)
-                for ci in range(k):
-                    if not (present >> ci & 1):
-                        if not (reachable & color_mask[ci]):
-                            return
+    def complete(self, present, count):
+        return present == self.ALL
 
-            frontier = expand(region) & ~region & ~forbidden
-            if not frontier:
-                if present == ALL:
-                    all_regions.add(region)
-                return
-            
-            v = frontier & -frontier
-            i = v.bit_length() - 1
-            forbidden_next = forbidden | conflict[i]
-            present_next = present
-            ci = symbol_color.get(i)
-            if ci is not None:
-                forbidden_next |= color_mask[ci] & ~v
-                present_next |= 1 << ci
-            rec(region | v, forbidden_next, present_next)
-            rec(region, forbidden | v, present)
-            
-        for i in range(n):
-            if not (color_mask[0] & bit[i]):
-                continue
-            forbidden = (
-                (color_mask[0] & ~bit[i])
-                | conflict[i]
-            )
-            rec(bit[i], forbidden, 1)
-        by_cell = {}
-        for mask in all_regions:
-            m = mask
+    def leftover_ok(self, present, leftover):
+        """`leftover` : un groupe connexe de cases hors de la région en cours de construction.
+        Si la région a déjà un symbole de chaque couleur, elle ne peut plus en absorber :
+        les symboles de ce groupe sont définitifs, ils doivent déjà être équilibrés et appariables.
+        Un groupe sans aucun symbole reste possible : la région peut encore l'absorber."""
+        if present != self.ALL:
+            return True
+        if not any(leftover & m for m in self.mask):
+            return True
+        return self.region_count(leftover) != 0
 
-            while m:
-                low = m & -m
-                i = low.bit_length() - 1
+    def accepts(self, mask):
+        return all((mask & m).bit_count() == 1 for m in self.mask)
 
-                by_cell.setdefault(i, []).append(mask)
-                m ^= low
-        self._by_cell = by_cell
-        print(f"Régions valides avec symboles : {len(all_regions)}")
+    def region_count(self, comp):
+        n0 = (comp & self.mask[0]).bit_count()
+        if n0 == 0 or any((comp & m).bit_count() != n0 for m in self.mask):
+            return 0
+        if n0 > 1 and not self._pairable(comp):
+            return 0
+        return n0
 
-    def candidates(self, u, comp):
-        if self._by_cell is None:
-            self._placements()
-        for mask in self._by_cell.get(u, ()):
-            if mask & ~comp == 0:
-                yield mask
-                
+    def _pairable(self, comp):
+        """Chaque symbole de la couleur 0 doit pouvoir être apparié à un symbole de chaque autre
+        couleur c (appariement parfait), car chaque région a un symbole de chaque couleur.
+
+        Deux symboles (couleur 0 et couleur c) ne peuvent se retrouver dans la même région que
+        s'ils sont voisins, ou s'ils touchent une même zone connexe de cases qui ne contient
+        aucun autre symbole de ces deux couleurs. (Un symbole d'une troisième couleur peut, lui,
+        servir de passage : la région en contient un.)"""
+        first = _bits(comp & self.mask[0])
+        for other_mask in self.mask[1:]:
+            both = self.mask[0] | other_mask
+            free = comp & ~both
+            zones = []
+            while free:
+                z = self.flood(free & -free, free)
+                zones.append(z)
+                free &= ~z
+
+            def touching(i):
+                t, nbm = 0, self.nb[i]
+                for j, z in enumerate(zones):
+                    if nbm & z:
+                        t |= 1 << j
+                return t
+
+            other = _bits(comp & other_mask)
+            t_other = {b: touching(b) for b in other}
+            options = []
+            for a in first:
+                ta, nba = touching(a), self.nb[a]
+                options.append([b for b in other if ta & t_other[b] or nba >> b & 1])
+            if not _perfect_matching(options):
+                return False
+        return True
+
 
 def build(ctx):
-    return SymbolsRule(ctx)
-
-
-def has_too_many_symbols(region, symbol_positions):
-    """Vérifie si une région contient plusieurs symboles du même type."""
-
-    return any(
-        sum(cell in positions for cell in region) > 1
-        for positions in symbol_positions.values()
-    )
-
-
-def has_one_each_symbol(region, symbol_positions):
-    """Vérifie qu'une région contient exactement un symbole de chaque type."""
-
-    return all(
-        sum(cell in positions for cell in region) == 1
-        for positions in symbol_positions.values()
-    )
+    positions = ctx.symbol_positions
+    return SymbolsRule(ctx, list(positions), positions) if positions else None
