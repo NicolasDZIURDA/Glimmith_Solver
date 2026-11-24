@@ -1,7 +1,7 @@
 """Moteur commun : il ne connaît AUCUNE règle, il appelle leurs hooks."""
 from collections import defaultdict
 from types import SimpleNamespace
-from solver.rules import Rule, symbols, gemini, delta, shape_bank, precision, polyomino, mingle_shape, area, clue
+from solver.rules import Rule, symbols, gemini, delta, shape_bank, precision, polyomino, mingle_shape, area
 from puzzle_utils import prepare_puzzle
 import time
 
@@ -95,16 +95,11 @@ def solve_puzzle(puzzle, valid, walls, neighbors, max_solutions,
     rules = [r for t in sorted(ctx.rule_types) if (r := REGISTRY[t](ctx)) is not None]
     if not rules or any(r.unsatisfiable for r in rules):
         return []
-    if not any(r.defines_regions for r in rules):
-        clues = 0
-        for r in rules:
-            clues |= r.clue_cells
-        if not clues:
-            raise ValueError(
-                "Les règles " + ", ".join(sorted(ctx.rule_types)) + " contraignent des régions "
-                "mais n'en définissent pas : ajoute symbols, precision, shape_bank, area ou polyomino.")
-        # Seules des règles à indications (area, polyomino) : chaque région doit en contenir une.
-        rules.append(clue.ClueRule(clues))
+    if not any(r.defines_regions for r in rules) and not any(r.clue_cells for r in rules):
+        raise ValueError(
+            "Les règles " + ", ".join(sorted(ctx.rule_types)) + " contraignent des régions "
+            "mais n'en définissent pas : ajoute symbols, precision, shape_bank, area ou polyomino.")
+    # Sinon, seules des règles à indications (area, polyomino) : une région sans indication est libre.
     # Garde-fou : une règle qui ne surcharge aucune méthode de Rule ne contraint rien, et le
     # moteur renverrait des résultats faux sans le dire (par exemple une région unique).
     hooks = ("start", "add", "closed", "viable", "complete", "accepts",
