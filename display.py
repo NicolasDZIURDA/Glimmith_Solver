@@ -162,6 +162,9 @@ def display_solution(puzzle, solution):
             
     # Affichage des surfaces
     draw_area(ax, puzzle, height)
+    
+    # Affichage des palissades
+    draw_palisade(ax, puzzle, height)
 
     ax.set_xlim(0, width)
     ax.set_ylim(0, height)
@@ -295,3 +298,103 @@ def draw_area(ax, puzzle, height):
                     pe.Normal()
                 ]
             )
+            
+def draw_palisade(ax, puzzle, height):
+    """Affiche les motifs de palissade à l'intérieur des cellules."""
+
+    sides = {
+        "top":    ((0.25, 0.75), (0.75, 0.75)),
+        "right":  ((0.75, 0.75), (0.75, 0.25)),
+        "bottom": ((0.75, 0.25), (0.25, 0.25)),
+        "left":   ((0.25, 0.25), (0.25, 0.75)),
+    }
+
+    patterns = {
+        "closed":   ["top", "right", "bottom", "left"],
+        "corner":   ["bottom", "right"],
+        "straight": ["left", "right"],
+        "open":     [],
+        "tee":      ["top", "right", "left"],
+        "dead_end": ["right", "bottom", "left"],
+    }
+
+    corner_length = 0.12
+
+    for motif, positions in puzzle.get("palisade", {}).items():
+        for r, c in positions:
+            x = c
+            y = height - r - 1
+
+            # Coordonnées des coins
+            corners = {
+                "tl": (x + 0.25, y + 0.75),
+                "tr": (x + 0.75, y + 0.75),
+                "br": (x + 0.75, y + 0.25),
+                "bl": (x + 0.25, y + 0.25),
+            }
+
+            side_corners = {
+                "top": ("tl", "tr"),
+                "right": ("tr", "br"),
+                "bottom": ("br", "bl"),
+                "left": ("bl", "tl"),
+            }
+
+            closed = patterns.get(motif, [])
+
+            # Dessin des côtés
+            for side, (p1, p2) in side_corners.items():
+                a = corners[p1]
+                b = corners[p2]
+
+                if side in closed:
+                    # Côté fermé : trait épais
+                    ax.plot(
+                        [a[0], b[0]],
+                        [a[1], b[1]],
+                        color="black",
+                        linewidth=3,
+                        solid_capstyle="projecting",
+                        zorder=11
+                    )
+                else:
+                    # Côté ouvert : uniquement les deux petits coins
+                    if side == "top":
+                        segments = [
+                            (a, (a[0] + corner_length, a[1])),
+                            ((b[0] - corner_length, b[1]), b)
+                        ]
+                    elif side == "right":
+                        segments = [
+                            (a, (a[0], a[1] - corner_length)),
+                            ((b[0], b[1] + corner_length), b)
+                        ]
+                    elif side == "bottom":
+                        segments = [
+                            (a, (a[0] - corner_length, a[1])),
+                            ((b[0] + corner_length, b[1]), b)
+                        ]
+                    else:
+                        segments = [
+                            (a, (a[0], a[1] + corner_length)),
+                            ((b[0], b[1] - corner_length), b)
+                        ]
+
+                    for start, end in segments:
+                        ax.plot(
+                            [start[0], end[0]],
+                            [start[1], end[1]],
+                            color="black",
+                            linewidth=1.5,
+                            solid_capstyle="projecting",
+                            zorder=10
+                        )
+
+        ax.plot(
+            x + 0.5,
+            y + 0.5,
+            marker="o",
+            markersize=2.5,
+            color="black",
+            zorder=12
+        )

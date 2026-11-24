@@ -1,7 +1,7 @@
 """Moteur commun : il ne connaît AUCUNE règle, il appelle leurs hooks."""
 from collections import defaultdict
 from types import SimpleNamespace
-from solver.rules import Rule, symbols, gemini, delta, shape_bank, precision, polyomino, mingle_shape, area
+from solver.rules import Rule, symbols, gemini, delta, shape_bank, precision, polyomino, mingle_shape, area, palisade
 from puzzle_utils import prepare_puzzle
 import time
 
@@ -14,6 +14,7 @@ REGISTRY = {
     "polyomino": polyomino.build,
     "mingle_shape": mingle_shape.build,
     "area": area.build,
+    "palisade": palisade.build,
 }
 
 
