@@ -3,6 +3,7 @@ class Rule:
     provides_candidates = False
     defines_regions = True
     preferred_cells = 0     # masque de cases très contraintes : le moteur commence par elles
+    clue_cells = 0
 
     def start(self, i):                      return 0, 0
     def add(self, state, i):                 return state, 0

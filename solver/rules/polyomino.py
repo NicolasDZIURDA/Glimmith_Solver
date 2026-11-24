@@ -58,7 +58,7 @@ class PolyominoRule(Rule):
     Cette règle contraint des régions sans les définir : elle se combine avec
     symbols, precision ou shape_bank."""
 
-    defines_regions = False
+    #defines_regions = False
 
     def __init__(self, ctx, entries):
         self.ctx = ctx
@@ -75,6 +75,7 @@ class PolyominoRule(Rule):
                     self.unsatisfiable = True          # deux formes différentes pour une case
                 self.constrained |= ctx.bit[i]
         self.preferred_cells = self.constrained     # peu de régions possibles : on commence par là
+        self.clue_cells = self.constrained
         self._sig = {}
         self._placements = {}               # signature -> masques des placements possibles
 

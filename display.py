@@ -1,5 +1,6 @@
 import string
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
 from matplotlib.patches import Rectangle
 from matplotlib.collections import LineCollection
 from pathlib import Path
@@ -120,7 +121,8 @@ def display_solution(puzzle, solution):
                 solid_capstyle="butt",
             )
     
-    draw_special_walls(ax, puzzle)
+    # Affichage murs gemini et delta
+    draw_gemini_delta_walls(ax, puzzle)
             
     symbols = puzzle.get("symbols") or {}
     symbol_chars = {
@@ -130,7 +132,8 @@ def display_solution(puzzle, solution):
         "green": "G",
         "purple": "P"
     }
-            
+         
+    # Affichage des symboles
     for symbol_type, positions in symbols.items():
         char = symbol_chars.get(symbol_type, "?")
 
@@ -156,6 +159,9 @@ def display_solution(puzzle, solution):
                 shape,
                 height
             )
+            
+    # Affichage des surfaces
+    draw_area(ax, puzzle, height)
 
     ax.set_xlim(0, width)
     ax.set_ylim(0, height)
@@ -172,7 +178,7 @@ def display_solution(puzzle, solution):
     )
     plt.close(fig)
     
-def draw_special_walls(ax, puzzle):
+def draw_gemini_delta_walls(ax, puzzle):
     height = len(puzzle["grid"])
     active_rules = {rule["type"] for rule in puzzle["rules"]}
 
@@ -269,3 +275,23 @@ def draw_polyomino(ax, cell, shape, height, color="black"):
         linewidth=0.5,
         zorder=5
     ))
+
+def draw_area(ax, puzzle, height):
+    """Affiche les tailles de régions indiquées dans le puzzle."""
+    for area, positions in puzzle.get("area", {}).items():
+        for r, c in positions:
+            ax.text(
+                c + 0.5,
+                height - r - 0.5,
+                str(area),
+                ha="center",
+                va="center",
+                fontsize=25,
+                color="white",
+                fontweight="bold",
+                zorder=10,
+                path_effects=[
+                    pe.Stroke(linewidth=1, foreground="black"),
+                    pe.Normal()
+                ]
+            )

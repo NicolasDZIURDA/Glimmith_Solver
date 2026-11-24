@@ -1,7 +1,7 @@
 """Moteur commun : il ne connaît AUCUNE règle, il appelle leurs hooks."""
 from collections import defaultdict
 from types import SimpleNamespace
-from solver.rules import Rule, symbols, gemini, delta, shape_bank, precision, polyomino, mingle_shape
+from solver.rules import Rule, symbols, gemini, delta, shape_bank, precision, polyomino, mingle_shape, area, clue
 from puzzle_utils import prepare_puzzle
 import time
 
@@ -13,6 +13,7 @@ REGISTRY = {
     "precision": precision.build,
     "polyomino": polyomino.build,
     "mingle_shape": mingle_shape.build,
+    "area": area.build,
 }
 
 
@@ -69,7 +70,7 @@ def _fmt(n):
     return f"{n:,}".replace(",", " ")
 
 
-def solve_puzzle(puzzle, valid, walls, neighbors, max_solutions=2,
+def solve_puzzle(puzzle, valid, walls, neighbors, max_solutions,
                  time_limit=None, verbose=False, stats=None, progress_every=2.0):
     """Renvoie la liste des solutions trouvées (au plus `max_solutions`).
 
@@ -95,9 +96,25 @@ def solve_puzzle(puzzle, valid, walls, neighbors, max_solutions=2,
     if not rules or any(r.unsatisfiable for r in rules):
         return []
     if not any(r.defines_regions for r in rules):
-        raise ValueError(
-            "Les règles " + ", ".join(sorted(ctx.rule_types)) + " contraignent des régions "
-            "mais n'en définissent pas : ajoute symbols, precision ou shape_bank.")
+        clues = 0
+        for r in rules:
+            clues |= r.clue_cells
+        if not clues:
+            raise ValueError(
+                "Les règles " + ", ".join(sorted(ctx.rule_types)) + " contraignent des régions "
+                "mais n'en définissent pas : ajoute symbols, precision, shape_bank, area ou polyomino.")
+        # Seules des règles à indications (area, polyomino) : chaque région doit en contenir une.
+        rules.append(clue.ClueRule(clues))
+    # Garde-fou : une règle qui ne surcharge aucune méthode de Rule ne contraint rien, et le
+    # moteur renverrait des résultats faux sans le dire (par exemple une région unique).
+    hooks = ("start", "add", "closed", "viable", "complete", "accepts",
+             "region_ok", "region_count", "candidates")
+    for r in rules:
+        if not any(getattr(type(r), h) is not getattr(Rule, h) for h in hooks):
+            raise ValueError(
+                f"La règle {type(r).__name__} ne surcharge aucune méthode de Rule "
+                f"({', '.join(hooks)}) : elle ne contraindrait rien. "
+                "Vérifie le nom et le fichier de ses méthodes.")
     sources = [r for r in rules if r.provides_candidates]
     if len(sources) > 1:
         raise ValueError("Une seule règle peut fournir les régions candidates.")

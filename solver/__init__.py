@@ -1,9 +1,7 @@
 from puzzle_utils import neighbors, validate_walls
 from .core import REGISTRY, solve_puzzle
 
-
 SUPPORTED_RULES = sorted(REGISTRY)      # une règle ajoutée au registre est reconnue partout
-
 
 def _build_valid(puzzle):
     return {
@@ -13,8 +11,7 @@ def _build_valid(puzzle):
         if ch == "."
     }
 
-
-def solve(puzzle, max_solutions=2, **options):
+def solve(puzzle, max_solutions, **options):
     valid = _build_valid(puzzle)
     walls = validate_walls(puzzle.get("walls", []), valid)
     return solve_puzzle(puzzle, valid, walls, neighbors, max_solutions, **options)
