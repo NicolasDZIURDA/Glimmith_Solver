@@ -314,11 +314,11 @@ def draw_palisade(ax, puzzle, height):
         "corner":   ["bottom", "right"],
         "straight": ["left", "right"],
         "open":     [],
-        "tee":      ["top", "right", "left"],
+        "tee":      ["bottom"],
         "dead_end": ["right", "bottom", "left"],
     }
 
-    corner_length = 0.12
+    corner_length = 0.05
 
     for motif, positions in puzzle.get("palisade", {}).items():
         for r, c in positions:
@@ -390,11 +390,11 @@ def draw_palisade(ax, puzzle, height):
                             zorder=10
                         )
 
-        ax.plot(
-            x + 0.5,
-            y + 0.5,
-            marker="o",
-            markersize=2.5,
-            color="black",
-            zorder=12
-        )
+            ax.plot(
+                x + 0.5,
+                y + 0.5,
+                marker="o",
+                markersize=2.5,
+                color="black",
+                zorder=12
+            )

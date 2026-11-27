@@ -17,16 +17,16 @@ def _patterns_of(spec):
         angle   : 2 côtés contigus          droit   : 2 côtés opposés
         impasse : 3 côtés (un seul ouvert)  t       : 1 seul côté clôturé
     """
-    shapes = {"closed": 1 | 2 | 4 | 8, "open": 0, "corner": 1 | 2, "straight": 1 | 4,
+    shapes = {"closed": 1 | 2 | 4 | 8, "four_way": 0, "corner": 1 | 2, "straight": 1 | 4,
               "dead_end": 1 | 2 | 4, "tee": 1}
-    aliases = {"fermee": "closed", "fermée": "closed", "ouvert": "open", "ouverte": "open",
-               "croix": "open", "angle": "corner", "droit": "straight", "droite": "straight",
+    aliases = {"fermee": "closed", "fermée": "closed", "ouvert": "four_way", "ouverte": "four_way",
+               "croix": "four_way", "angle": "corner", "droit": "straight", "droite": "straight",
                "impasse": "dead_end", "cul_de_sac": "dead_end", "t": "tee"}
     key = str(spec).strip().lower().replace("-", "_").replace(" ", "_")
     key = aliases.get(key, key)
     if key not in shapes:
         raise ValueError(
-            f"Forme de palissade inconnue : {spec!r} (attendu : closed, open, corner, straight, "
+            f"Forme de palissade inconnue : {spec!r} (attendu : closed, four_way, corner, straight, "
             "dead_end ou tee)")
     return _rotations(shapes[key])
 
